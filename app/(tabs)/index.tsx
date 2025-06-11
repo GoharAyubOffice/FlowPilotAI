@@ -10,7 +10,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { getColors } from '../../constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { CircleCheck as CheckCircle2, Circle, Coffee, Droplets, Dumbbell, Heart, Phone, BookOpen, Target, Clock, Sun, Moon } from 'lucide-react-native';
 

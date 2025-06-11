@@ -10,6 +10,7 @@ const THEME_STORAGE_KEY = '@theme_preference';
 export function useColorScheme() {
   const systemColorScheme = useNativeColorScheme();
   const [colorScheme, setColorScheme] = useState<ColorScheme>(systemColorScheme ?? 'light');
+  // Fix: Pass the actual colorScheme string instead of a boolean
   const colors = getColors(colorScheme === 'dark');
 
   // Load saved theme preference
@@ -19,8 +20,6 @@ export function useColorScheme() {
         const savedTheme = await AsyncStorage.getItem(THEME_STORAGE_KEY);
         if (savedTheme) {
           setColorScheme(savedTheme as ColorScheme);
-        } else if (systemColorScheme) {
-          setColorScheme(systemColorScheme);
         }
       } catch (error) {
         console.error('Error loading theme:', error);

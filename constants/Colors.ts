@@ -38,4 +38,8 @@ export const Colors = {
 } as const;
 
 // Helper function to get current theme colors
-export const getColors = (isDark: boolean) => isDark ? Colors.dark : Colors.light;
+// Helper function to get current theme colors
+export const getColors = (isDark: boolean) => {
+  // Ensure we're using the correct theme colors
+  return isDark ? Colors.dark : Colors.light;
+};

@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { getColors } from '../../constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Flame, Calendar, Trophy, Target, TrendingUp, Star, Award, Zap, CircleCheck as CheckCircle2 } from 'lucide-react-native';
 
