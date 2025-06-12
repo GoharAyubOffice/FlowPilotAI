@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useColorScheme } from '@/hooks/useColorScheme';
+import { Colors } from '@/constants/Colors';
 import {
   Search,
   Filter,
@@ -47,6 +47,7 @@ import {
 } from 'lucide-react-native';
 
 const { width, height } = Dimensions.get('window');
+const colors = Colors.light;
 
 interface Category {
   id: string;
@@ -456,36 +457,43 @@ const topicCarousels: TopicCarousel[] = [
 ];
 
 export default function ExploreScreen() {
-  const { colorScheme, colors } = useColorScheme();
-  const [selectedCategory, setSelectedCategory] = useState(categories[0]);
+  const [selectedCategory, setSelectedCategory] = useState<string>('productivity');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<Book[]>([]);
+  const [readBooks, setReadBooks] = useState<string[]>([]);
+  const [randomBook, setRandomBook] = useState<Book | null>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
   const [currentBookIndex, setCurrentBookIndex] = useState(0);
-  const [readBooks, setReadBooks] = useState<Set<string>>(new Set());
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   const handleCategoryPress = (category: Category) => {
-    setSelectedCategory(category);
+    setSelectedCategory(category.id);
     setCurrentBookIndex(0);
   };
 
   const handleRandomizeBook = () => {
-    const randomIndex = Math.floor(Math.random() * selectedCategory.books.length);
-    setCurrentBookIndex(randomIndex);
+    const currentCategory = categories.find(c => c.id === selectedCategory);
+    if (currentCategory) {
+      const randomIndex = Math.floor(Math.random() * currentCategory.books.length);
+      setCurrentBookIndex(randomIndex);
+    }
   };
 
   const handleReadBook = (bookId: string) => {
-    setReadBooks(prev => new Set([...prev, bookId]));
+    setReadBooks(prev => [...prev, bookId]);
     
     // Animate check mark
     Animated.sequence([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 300,
+        duration: 200,
         useNativeDriver: true,
       }),
       Animated.delay(1000),
       Animated.timing(fadeAnim, {
         toValue: 0,
-        duration: 300,
+        duration: 200,
         useNativeDriver: true,
       }),
     ]).start();
@@ -497,21 +505,21 @@ export default function ExploreScreen() {
       style={[
         styles.categoryTab,
         {
-          backgroundColor: selectedCategory.id === category.id ? category.color : colors.surface,
-          borderColor: selectedCategory.id === category.id ? category.color : colors.border,
+          backgroundColor: selectedCategory === category.id ? category.color : colors.surface,
+          borderColor: selectedCategory === category.id ? category.color : colors.border,
         }
       ]}
       onPress={() => handleCategoryPress(category)}
     >
       <View style={styles.categoryIconContainer}>
         {React.cloneElement(category.icon, {
-          color: selectedCategory.id === category.id ? colors.white : colors.textSecondary,
+          color: selectedCategory === category.id ? colors.white : colors.textSecondary,
         } as { color: string })}
       </View>
       <Text style={[
         styles.categoryTabText,
         {
-          color: selectedCategory.id === category.id ? colors.white : colors.textSecondary,
+          color: selectedCategory === category.id ? colors.white : colors.textSecondary,
         }
       ]}>
         {category.name}
@@ -520,7 +528,7 @@ export default function ExploreScreen() {
   );
 
   const renderBookCard = (book: Book) => {
-    const isRead = readBooks.has(book.id);
+    const isRead = readBooks.includes(book.id);
     
     return (
       <View style={[styles.bookCard, { backgroundColor: colors.card }]}>
@@ -935,8 +943,12 @@ export default function ExploreScreen() {
 
         {/* Featured Book */}
         <View style={styles.bookSection}>
-          <Text style={styles.sectionTitle}>Featured in {selectedCategory.name}</Text>
-          {selectedCategory.books[currentBookIndex] && renderBookCard(selectedCategory.books[currentBookIndex])}
+          <Text style={styles.sectionTitle}>Featured in {selectedCategory}</Text>
+          {(() => {
+            const currentCategory = categories.find(c => c.id === selectedCategory);
+            const currentBook = currentCategory?.books[currentBookIndex];
+            return currentBook ? renderBookCard(currentBook) : null;
+          })()}
         </View>
 
         {/* Dive Deep Sections */}

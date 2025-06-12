@@ -5,15 +5,17 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  TextInput,
   Dimensions,
   Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useColorScheme } from '@/hooks/useColorScheme';
 import { CircleCheck as CheckCircle2, Circle, Coffee, Droplets, Dumbbell, Heart, Phone, BookOpen, Target, Clock, Sun, Moon } from 'lucide-react-native';
+import { Colors } from '@/constants/Colors';
 
 const { width } = Dimensions.get('window');
+const colors = Colors.light;
 
 interface Task {
   id: string;
@@ -115,7 +117,6 @@ const getInitialTasks = (): Task[] => [
 ];
 
 export default function FlowDashboard() {
-  const { colorScheme, colors, toggleColorScheme } = useColorScheme();
   const [tasks, setTasks] = useState(getInitialTasks());
   const [currentMotivationIndex, setCurrentMotivationIndex] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
@@ -451,17 +452,10 @@ export default function FlowDashboard() {
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.headerLeft}>
-              <Text style={styles.greeting}>Good morning,</Text>
+              <Text style={styles.greeting}>Good morning</Text>
               <Text style={styles.userName}>Alex</Text>
             </View>
             <View style={styles.headerRight}>
-              <TouchableOpacity style={styles.themeToggle} onPress={toggleColorScheme}>
-                {colorScheme === 'dark' ? (
-                  <Sun size={20} color={colors.textSecondary} />
-                ) : (
-                  <Moon size={20} color={colors.textSecondary} />
-                )}
-              </TouchableOpacity>
               <View style={styles.progressCircle}>
                 <Text style={styles.progressText}>{Math.round(progressPercentage)}%</Text>
               </View>

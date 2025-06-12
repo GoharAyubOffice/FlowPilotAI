@@ -9,8 +9,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useColorScheme } from '@/hooks/useColorScheme';
 import { Flame, Calendar, Trophy, Target, TrendingUp, Star, Award, Zap, CircleCheck as CheckCircle2 } from 'lucide-react-native';
+import { Colors } from '@/constants/Colors';
+
+const colors = Colors.light;
 
 interface Achievement {
   id: string;
@@ -130,11 +132,10 @@ const createAchievements = (stats: UserStats): Achievement[] => [
 ];
 
 export default function StreakScreen() {
-  const { colorScheme, colors } = useColorScheme();
   const [selectedTab, setSelectedTab] = useState<'overview' | 'achievements'>('overview');
   const [weekData, setWeekData] = useState<WeekDay[]>([]);
-  const [userStats, setUserStats] = useState<UserStats | null>(null);
-  const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [userStats, setUserStats] = useState(getInitialUserStats());
+  const [achievements, setAchievements] = useState(createAchievements(userStats));
 
   useEffect(() => {
     const week = getCurrentWeekData();

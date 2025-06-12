@@ -10,8 +10,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useColorScheme } from '@/hooks/useColorScheme';
 import { BookOpen, Heart, Folder, Plus, Search, Grid3x3 as Grid3X3, List, Star, Clock, Quote, ArrowRight, MoveHorizontal as MoreHorizontal, X } from 'lucide-react-native';
+import { Colors } from '@/constants/Colors';
+
+const colors = Colors.light;
 
 interface Collection {
   id: string;
@@ -70,7 +72,6 @@ const getInitialCollections = (colors: any): Collection[] => [
 const getInitialRecentItems = (): SavedItem[] => [];
 
 export default function LibraryScreen() {
-  const { colorScheme, colors } = useColorScheme();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
