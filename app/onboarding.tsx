@@ -11,8 +11,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { Colors } from '../constants/Colors';
+import { Colors, getColors } from '../constants/Colors';
 import { ChevronLeft, ChevronRight, Sparkles, Target, Zap } from 'lucide-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useColorScheme } from '@/hooks/useColorScheme';
 
 const { width } = Dimensions.get('window');
 
@@ -28,23 +30,25 @@ const onboardingCards: OnboardingCard[] = [
     id: 1,
     question: "What time do you usually wake up?",
     options: ["5:00 - 6:00 AM", "6:00 - 7:00 AM", "7:00 - 8:00 AM", "8:00 AM or later"],
-    icon: <Sparkles size={28} color={Colors.primary} />
+    icon: <Sparkles size={28} color={Colors.light.primary} />
   },
   {
     id: 2,
     question: "What's one goal this week?",
     options: ["Build better habits", "Complete a project", "Learn something new", "Improve health"],
-    icon: <Target size={28} color={Colors.primary} />
+    icon: <Target size={28} color={Colors.light.primary} />
   },
   {
     id: 3,
     question: "What motivates you more?",
     options: ["Rewards & achievements", "Reflection & growth", "Community & sharing", "Personal challenges"],
-    icon: <Zap size={28} color={Colors.primary} />
+    icon: <Zap size={28} color={Colors.light.primary} />
   }
 ];
 
 export default function OnboardingScreen() {
+  const colorScheme = useColorScheme();
+  const colors = getColors(colorScheme === 'dark');
   const [currentCard, setCurrentCard] = useState(0);
   const [answers, setAnswers] = useState<{ [key: number]: string }>({});
   const scrollRef = useRef<ScrollView>(null);
@@ -90,9 +94,26 @@ export default function OnboardingScreen() {
     }
   };
 
-  const handleComplete = (planType: 'ai' | 'manual') => {
-    // Store onboarding data and navigate to main app
-    router.replace('/(tabs)');
+  const handleComplete = async (planType: 'ai' | 'manual') => {
+    try {
+      // Store onboarding data
+      const onboardingData = {
+        completed: true,
+        planType,
+        answers,
+        completedAt: new Date().toISOString()
+      };
+      
+      // Store in AsyncStorage
+      await AsyncStorage.setItem('onboardingData', JSON.stringify(onboardingData));
+      
+      // Navigate to main app
+      router.replace('/(tabs)');
+    } catch (error) {
+      console.error('Error saving onboarding data:', error);
+      // Still try to navigate even if storage fails
+      router.replace('/(tabs)');
+    }
   };
 
   const renderCard = (card: OnboardingCard, index: number) => (
@@ -131,7 +152,7 @@ export default function OnboardingScreen() {
     <View style={[styles.card, { width }]}>
       <View style={styles.cardContent}>
         <View style={styles.iconContainer}>
-          <Sparkles size={32} color={Colors.coral} />
+          <Sparkles size={32} color={colors.coral} />
         </View>
         
         <Text style={styles.finalTitle}>You're all set!</Text>
@@ -143,7 +164,7 @@ export default function OnboardingScreen() {
             onPress={() => handleComplete('ai')}
           >
             <LinearGradient
-              colors={[Colors.primary, Colors.accent]}
+              colors={[colors.primary, colors.accent]}
               style={styles.gradientButton}
             >
               <Text style={styles.finalOptionTitle}>🧠 Let AI structure my day</Text>
@@ -164,9 +185,9 @@ export default function OnboardingScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <LinearGradient
-        colors={[Colors.background, Colors.white]}
+        colors={[colors.background, colors.white]}
         style={styles.gradient}
       >
         {/* Header */}
@@ -176,7 +197,7 @@ export default function OnboardingScreen() {
             onPress={handleBack}
             disabled={currentCard === 0}
           >
-            <ChevronLeft size={24} color={Colors.text} />
+            <ChevronLeft size={24} color={colors.text} />
           </TouchableOpacity>
           
           <View style={styles.progressContainer}>
@@ -221,7 +242,6 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
   },
   gradient: {
     flex: 1,
@@ -230,17 +250,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 8,
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.light.white,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: Colors.text,
+    shadowColor: Colors.light.text,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -251,25 +272,31 @@ const styles = StyleSheet.create({
   },
   progressContainer: {
     flex: 1,
-    alignItems: 'center',
-    marginHorizontal: 20,
+    marginLeft: 16,
   },
   progressTrack: {
     width: '100%',
     height: 6,
-    backgroundColor: Colors.border,
+    backgroundColor: Colors.light.border,
     borderRadius: 3,
     overflow: 'hidden',
   },
   progressBar: {
+    width: '100%',
+    height: 6,
+    backgroundColor: Colors.light.border,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressFill: {
     height: '100%',
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.light.primary,
     borderRadius: 3,
   },
   progressText: {
     fontFamily: 'Inter-Medium',
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: Colors.light.textSecondary,
     marginTop: 8,
   },
   placeholder: {
@@ -280,26 +307,27 @@ const styles = StyleSheet.create({
   },
   card: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
+    paddingTop: 32,
   },
   cardContent: {
     flex: 1,
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.light.white,
     borderRadius: 20,
     padding: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: Colors.text,
+    shadowColor: Colors.light.text,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 12,
+    shadowRadius: 8,
     elevation: 4,
   },
   iconContainer: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: `${Colors.primary}15`,
+    backgroundColor: `${Colors.light.primary}15`,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 24,
@@ -307,10 +335,9 @@ const styles = StyleSheet.create({
   question: {
     fontFamily: 'Inter-Bold',
     fontSize: 24,
-    color: Colors.text,
+    color: Colors.light.text,
     textAlign: 'center',
     marginBottom: 32,
-    lineHeight: 32,
   },
   optionsContainer: {
     width: '100%',
@@ -320,34 +347,34 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 20,
     borderRadius: 12,
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.light.background,
     borderWidth: 2,
-    borderColor: Colors.border,
+    borderColor: Colors.light.border,
   },
   selectedOption: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+    backgroundColor: Colors.light.primary,
+    borderColor: Colors.light.primary,
   },
   optionText: {
     fontFamily: 'Inter-Medium',
     fontSize: 16,
-    color: Colors.text,
+    color: Colors.light.text,
     textAlign: 'center',
   },
   selectedOptionText: {
-    color: Colors.white,
+    color: Colors.light.white,
   },
   finalTitle: {
     fontFamily: 'Inter-Bold',
     fontSize: 28,
-    color: Colors.text,
+    color: Colors.light.text,
     textAlign: 'center',
     marginBottom: 8,
   },
   finalSubtitle: {
     fontFamily: 'Inter-Regular',
     fontSize: 16,
-    color: Colors.textSecondary,
+    color: Colors.light.textSecondary,
     textAlign: 'center',
     marginBottom: 32,
   },
@@ -365,26 +392,29 @@ const styles = StyleSheet.create({
   manualOption: {
     paddingVertical: 20,
     paddingHorizontal: 24,
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.light.background,
     borderWidth: 2,
-    borderColor: Colors.border,
+    borderColor: Colors.light.border,
   },
   gradientButton: {
-    paddingVertical: 20,
+    width: '100%',
+    paddingVertical: 16,
     paddingHorizontal: 24,
+    borderRadius: 12,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   finalOptionTitle: {
     fontFamily: 'Inter-Bold',
     fontSize: 18,
-    color: Colors.white,
+    color: Colors.light.white,
     textAlign: 'center',
     marginBottom: 4,
   },
   finalOptionSubtitle: {
     fontFamily: 'Inter-Regular',
     fontSize: 14,
-    color: Colors.white,
+    color: Colors.light.white,
     opacity: 0.9,
     textAlign: 'center',
   },
