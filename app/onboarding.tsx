@@ -11,9 +11,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { Colors } from '../constants/Colors';
 import { ChevronLeft, ChevronRight, Sparkles, Target, Zap } from 'lucide-react-native';
-import { Colors, getColors } from '../constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
 
 const { width } = Dimensions.get('window');
 
@@ -21,37 +20,35 @@ interface OnboardingCard {
   id: number;
   question: string;
   options: string[];
-  icon: React.ReactElement;
+  icon: React.ReactNode;
 }
 
+const onboardingCards: OnboardingCard[] = [
+  {
+    id: 1,
+    question: "What time do you usually wake up?",
+    options: ["5:00 - 6:00 AM", "6:00 - 7:00 AM", "7:00 - 8:00 AM", "8:00 AM or later"],
+    icon: <Sparkles size={28} color={Colors.primary} />
+  },
+  {
+    id: 2,
+    question: "What's one goal this week?",
+    options: ["Build better habits", "Complete a project", "Learn something new", "Improve health"],
+    icon: <Target size={28} color={Colors.primary} />
+  },
+  {
+    id: 3,
+    question: "What motivates you more?",
+    options: ["Rewards & achievements", "Reflection & growth", "Community & sharing", "Personal challenges"],
+    icon: <Zap size={28} color={Colors.primary} />
+  }
+];
+
 export default function OnboardingScreen() {
-  const colorScheme = useColorScheme();
-  const colors = getColors(colorScheme === 'dark');
   const [currentCard, setCurrentCard] = useState(0);
   const [answers, setAnswers] = useState<{ [key: number]: string }>({});
   const scrollRef = useRef<ScrollView>(null);
   const progressAnim = useRef(new Animated.Value(0)).current;
-
-  const onboardingCards: OnboardingCard[] = [
-    {
-      id: 1,
-      question: "What time do you usually wake up?",
-      options: ["5:00 - 6:00 AM", "6:00 - 7:00 AM", "7:00 - 8:00 AM", "8:00 AM or later"],
-      icon: <Sparkles size={28} color={colors.primary} />
-    },
-    {
-      id: 2,
-      question: "What's one goal this week?",
-      options: ["Build better habits", "Complete a project", "Learn something new", "Improve health"],
-      icon: <Target size={28} color={colors.primary} />
-    },
-    {
-      id: 3,
-      question: "What motivates you more?",
-      options: ["Rewards & achievements", "Reflection & growth", "Community & sharing", "Personal challenges"],
-      icon: <Zap size={28} color={colors.primary} />
-    }
-  ];
 
   const handleAnswer = (answer: string) => {
     setAnswers(prev => ({ ...prev, [currentCard]: answer }));
@@ -100,12 +97,12 @@ export default function OnboardingScreen() {
 
   const renderCard = (card: OnboardingCard, index: number) => (
     <View key={card.id} style={[styles.card, { width }]}>
-      <View style={[styles.cardContent, { backgroundColor: colors.card }]}>
-        <View style={[styles.iconContainer, { backgroundColor: `${colors.primary}15` }]}>
+      <View style={styles.cardContent}>
+        <View style={styles.iconContainer}>
           {card.icon}
         </View>
         
-        <Text style={[styles.question, { color: colors.text }]}>{card.question}</Text>
+        <Text style={styles.question}>{card.question}</Text>
         
         <View style={styles.optionsContainer}>
           {card.options.map((option, optionIndex) => (
@@ -113,21 +110,13 @@ export default function OnboardingScreen() {
               key={optionIndex}
               style={[
                 styles.option,
-                { 
-                  backgroundColor: colors.background,
-                  borderColor: colors.border
-                },
-                answers[index] === option && {
-                  backgroundColor: colors.primary,
-                  borderColor: colors.primary
-                }
+                answers[index] === option && styles.selectedOption
               ]}
               onPress={() => handleAnswer(option)}
             >
               <Text style={[
                 styles.optionText,
-                { color: colors.text },
-                answers[index] === option && { color: colors.white }
+                answers[index] === option && styles.selectedOptionText
               ]}>
                 {option}
               </Text>
@@ -140,13 +129,13 @@ export default function OnboardingScreen() {
 
   const renderFinalChoice = () => (
     <View style={[styles.card, { width }]}>
-      <View style={[styles.cardContent, { backgroundColor: colors.card }]}>
-        <View style={[styles.iconContainer, { backgroundColor: `${colors.primary}15` }]}>
-          <Sparkles size={32} color={colors.coral} />
+      <View style={styles.cardContent}>
+        <View style={styles.iconContainer}>
+          <Sparkles size={32} color={Colors.coral} />
         </View>
         
-        <Text style={[styles.finalTitle, { color: colors.text }]}>You're all set!</Text>
-        <Text style={[styles.finalSubtitle, { color: colors.textSecondary }]}>How would you like to plan your days?</Text>
+        <Text style={styles.finalTitle}>You're all set!</Text>
+        <Text style={styles.finalSubtitle}>How would you like to plan your days?</Text>
         
         <View style={styles.finalOptionsContainer}>
           <TouchableOpacity
@@ -154,7 +143,7 @@ export default function OnboardingScreen() {
             onPress={() => handleComplete('ai')}
           >
             <LinearGradient
-              colors={[colors.primary, colors.accent]}
+              colors={[Colors.primary, Colors.accent]}
               style={styles.gradientButton}
             >
               <Text style={styles.finalOptionTitle}>🧠 Let AI structure my day</Text>
@@ -163,18 +152,11 @@ export default function OnboardingScreen() {
           </TouchableOpacity>
           
           <TouchableOpacity
-            style={[
-              styles.finalOption,
-              styles.manualOption,
-              {
-                backgroundColor: colors.background,
-                borderColor: colors.border
-              }
-            ]}
+            style={[styles.finalOption, styles.manualOption]}
             onPress={() => handleComplete('manual')}
           >
-            <Text style={[styles.finalOptionTitle, { color: colors.text }]}>📝 I'll plan manually</Text>
-            <Text style={[styles.finalOptionSubtitle, { color: colors.textSecondary }]}>With AI assistance</Text>
+            <Text style={styles.finalOptionTitle}>📝 I'll plan manually</Text>
+            <Text style={styles.finalOptionSubtitle}>With AI assistance</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -182,32 +164,27 @@ export default function OnboardingScreen() {
   );
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={styles.container}>
       <LinearGradient
-        colors={[colors.background, colors.white]}
+        colors={[Colors.background, Colors.white]}
         style={styles.gradient}
       >
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
-            style={[
-              styles.backButton,
-              { backgroundColor: colors.card },
-              currentCard === 0 && styles.hiddenButton
-            ]}
+            style={[styles.backButton, currentCard === 0 && styles.hiddenButton]}
             onPress={handleBack}
             disabled={currentCard === 0}
           >
-            <ChevronLeft size={24} color={colors.text} />
+            <ChevronLeft size={24} color={Colors.text} />
           </TouchableOpacity>
           
           <View style={styles.progressContainer}>
-            <View style={[styles.progressTrack, { backgroundColor: colors.border }]}>
+            <View style={styles.progressTrack}>
               <Animated.View
                 style={[
                   styles.progressBar,
                   {
-                    backgroundColor: colors.primary,
                     width: progressAnim.interpolate({
                       inputRange: [0, 1],
                       outputRange: ['0%', '100%'],
@@ -216,7 +193,7 @@ export default function OnboardingScreen() {
                 ]}
               />
             </View>
-            <Text style={[styles.progressText, { color: colors.textSecondary }]}>
+            <Text style={styles.progressText}>
               {currentCard + 1} of {onboardingCards.length}
             </Text>
           </View>
@@ -244,6 +221,7 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: Colors.background,
   },
   gradient: {
     flex: 1,
@@ -259,8 +237,10 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
+    backgroundColor: Colors.white,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: Colors.text,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -277,16 +257,19 @@ const styles = StyleSheet.create({
   progressTrack: {
     width: '100%',
     height: 6,
+    backgroundColor: Colors.border,
     borderRadius: 3,
     overflow: 'hidden',
   },
   progressBar: {
     height: '100%',
+    backgroundColor: Colors.primary,
     borderRadius: 3,
   },
   progressText: {
     fontFamily: 'Inter-Medium',
     fontSize: 12,
+    color: Colors.textSecondary,
     marginTop: 8,
   },
   placeholder: {
@@ -301,10 +284,12 @@ const styles = StyleSheet.create({
   },
   cardContent: {
     flex: 1,
+    backgroundColor: Colors.white,
     borderRadius: 20,
     padding: 32,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: Colors.text,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 12,
@@ -314,6 +299,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
+    backgroundColor: `${Colors.primary}15`,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 24,
@@ -321,6 +307,7 @@ const styles = StyleSheet.create({
   question: {
     fontFamily: 'Inter-Bold',
     fontSize: 24,
+    color: Colors.text,
     textAlign: 'center',
     marginBottom: 32,
     lineHeight: 32,
@@ -333,22 +320,34 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 20,
     borderRadius: 12,
+    backgroundColor: Colors.background,
     borderWidth: 2,
+    borderColor: Colors.border,
+  },
+  selectedOption: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
   },
   optionText: {
     fontFamily: 'Inter-Medium',
     fontSize: 16,
+    color: Colors.text,
     textAlign: 'center',
+  },
+  selectedOptionText: {
+    color: Colors.white,
   },
   finalTitle: {
     fontFamily: 'Inter-Bold',
     fontSize: 28,
+    color: Colors.text,
     textAlign: 'center',
     marginBottom: 8,
   },
   finalSubtitle: {
     fontFamily: 'Inter-Regular',
     fontSize: 16,
+    color: Colors.textSecondary,
     textAlign: 'center',
     marginBottom: 32,
   },
@@ -366,7 +365,9 @@ const styles = StyleSheet.create({
   manualOption: {
     paddingVertical: 20,
     paddingHorizontal: 24,
+    backgroundColor: Colors.background,
     borderWidth: 2,
+    borderColor: Colors.border,
   },
   gradientButton: {
     paddingVertical: 20,
@@ -376,14 +377,14 @@ const styles = StyleSheet.create({
   finalOptionTitle: {
     fontFamily: 'Inter-Bold',
     fontSize: 18,
-    color: '#FFFFFF',
+    color: Colors.white,
     textAlign: 'center',
     marginBottom: 4,
   },
   finalOptionSubtitle: {
     fontFamily: 'Inter-Regular',
     fontSize: 14,
-    color: '#FFFFFF',
+    color: Colors.white,
     opacity: 0.9,
     textAlign: 'center',
   },

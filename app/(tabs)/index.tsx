@@ -5,17 +5,20 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  TextInput,
   Dimensions,
   Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { CircleCheck as CheckCircle2, Circle, Coffee, Droplets, Dumbbell, Heart, Phone, BookOpen, Target, Clock, Sun, Moon } from 'lucide-react-native';
-import { Colors } from '@/constants/Colors';
+import { getColors } from '../../constants/Colors';
+import { useColorScheme } from '@/hooks/useColorScheme';
+import { useTheme } from '@/hooks/useTheme';
+import { useNotifications } from '@/hooks/useNotifications';
+import UserProfile from '../../components/UserProfile';
+import AddTaskModal from '../../components/AddTaskModal';
+import { CircleCheck as CheckCircle2, Circle, Coffee, Droplets, Dumbbell, Heart, Phone, BookOpen, Target, Clock, Sun, Moon, User, Plus } from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
-const colors = Colors.light;
 
 interface Task {
   id: string;
@@ -117,17 +120,89 @@ const getInitialTasks = (): Task[] => [
 ];
 
 export default function FlowDashboard() {
+  const colorScheme = useColorScheme();
+  const { toggleTheme, isDark } = useTheme();
+  const { scheduleTaskNotification, cancelTaskNotifications } = useNotifications();
+  const colors = getColors(colorScheme === 'dark');
   const [tasks, setTasks] = useState(getInitialTasks());
   const [currentMotivationIndex, setCurrentMotivationIndex] = useState(0);
+  const [showProfile, setShowProfile] = useState(false);
+  const [showAddTask, setShowAddTask] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
+  // Schedule notifications for all tasks on component mount
+  useEffect(() => {
+    tasks.forEach(task => {
+      if (!task.completed) {
+        const taskTime = parseTaskTime(task.time);
+        if (taskTime > new Date()) {
+          scheduleTaskNotification(task.id, task.title, taskTime);
+        }
+      }
+    });
+  }, []);
+
+  const parseTaskTime = (timeString: string): Date => {
+    const today = new Date();
+    const [time, period] = timeString.split(' ');
+    const [hours, minutes] = time.split(':').map(Number);
+    
+    let hour24 = hours;
+    if (period === 'PM' && hours !== 12) {
+      hour24 += 12;
+    } else if (period === 'AM' && hours === 12) {
+      hour24 = 0;
+    }
+    
+    const taskDate = new Date(today.getFullYear(), today.getMonth(), today.getDate(), hour24, minutes);
+    
+    // If the time has passed today, schedule for tomorrow
+    if (taskDate <= new Date()) {
+      taskDate.setDate(taskDate.getDate() + 1);
+    }
+    
+    return taskDate;
+  };
+
   const toggleTask = (taskId: string) => {
     setTasks(prev =>
-      prev.map(task =>
-        task.id === taskId ? { ...task, completed: !task.completed } : task
-      )
+      prev.map(task => {
+        if (task.id === taskId) {
+          const updatedTask = { ...task, completed: !task.completed };
+          
+          // Cancel notifications when task is completed
+          if (updatedTask.completed) {
+            cancelTaskNotifications(taskId);
+          } else {
+            // Reschedule notification when task is uncompleted
+            const taskTime = parseTaskTime(task.time);
+            if (taskTime > new Date()) {
+              scheduleTaskNotification(taskId, task.title, taskTime);
+            }
+          }
+          
+          return updatedTask;
+        }
+        return task;
+      })
     );
+  };
+
+  const handleAddTask = (newTaskData: Omit<Task, 'id' | 'completed'>) => {
+    const newTask: Task = {
+      ...newTaskData,
+      id: Date.now().toString(),
+      completed: false,
+    };
+    
+    setTasks(prev => [...prev, newTask]);
+    
+    // Schedule notification for new task
+    const taskTime = parseTaskTime(newTask.time);
+    if (taskTime > new Date()) {
+      scheduleTaskNotification(newTask.id, newTask.title, taskTime);
+    }
   };
 
   const completedTasks = tasks.filter(task => task.completed).length;
@@ -172,9 +247,9 @@ export default function FlowDashboard() {
     >
       <View style={styles.taskLeft}>
         <View style={[styles.taskIcon, { backgroundColor: colors.surface }]}>
-          {React.cloneElement(task.icon as React.ReactElement, {
+          {React.cloneElement(task.icon as React.ReactElement<{ color?: string }>, {
             color: task.completed ? colors.success : colors.primary,
-          } as { color: string })}
+          })}
         </View>
         <View style={styles.taskContent}>
           <Text style={[styles.taskTitle, { color: colors.text }, task.completed && styles.completedTaskText]}>
@@ -233,6 +308,19 @@ export default function FlowDashboard() {
       gap: 12,
     },
     themeToggle: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: colors.card,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: colors.text,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    profileButton: {
       width: 44,
       height: 44,
       borderRadius: 22,
@@ -345,6 +433,19 @@ export default function FlowDashboard() {
       fontSize: 14,
       color: colors.textSecondary,
     },
+    addTaskButton: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: colors.text,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 4,
+      elevation: 3,
+    },
     timeline: {
       gap: 12,
     },
@@ -452,10 +553,20 @@ export default function FlowDashboard() {
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.headerLeft}>
-              <Text style={styles.greeting}>Good morning</Text>
+              <Text style={styles.greeting}>Good morning,</Text>
               <Text style={styles.userName}>Alex</Text>
             </View>
             <View style={styles.headerRight}>
+              <TouchableOpacity style={styles.themeToggle} onPress={toggleTheme}>
+                {isDark ? (
+                  <Sun size={20} color={colors.textSecondary} />
+                ) : (
+                  <Moon size={20} color={colors.textSecondary} />
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.profileButton} onPress={() => setShowProfile(true)}>
+                <User size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
               <View style={styles.progressCircle}>
                 <Text style={styles.progressText}>{Math.round(progressPercentage)}%</Text>
               </View>
@@ -498,6 +609,12 @@ export default function FlowDashboard() {
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Today's Flow</Text>
               <View style={styles.progressInfo}>
+                <TouchableOpacity 
+                  style={styles.addTaskButton}
+                  onPress={() => setShowAddTask(true)}
+                >
+                  <Plus size={20} color={colors.white} />
+                </TouchableOpacity>
                 <Text style={styles.progressLabel}>
                   {completedTasks} of {tasks.length} completed
                 </Text>
@@ -522,6 +639,16 @@ export default function FlowDashboard() {
           </View>
         </ScrollView>
       </LinearGradient>
+
+      {/* User Profile Modal */}
+      <UserProfile visible={showProfile} onClose={() => setShowProfile(false)} />
+      
+      {/* Add Task Modal */}
+      <AddTaskModal 
+        visible={showAddTask} 
+        onClose={() => setShowAddTask(false)}
+        onAddTask={handleAddTask}
+      />
     </SafeAreaView>
   );
 }

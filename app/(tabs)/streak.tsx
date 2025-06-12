@@ -9,16 +9,15 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { getColors } from '../../constants/Colors';
+import { useColorScheme } from '@/hooks/useColorScheme';
 import { Flame, Calendar, Trophy, Target, TrendingUp, Star, Award, Zap, CircleCheck as CheckCircle2 } from 'lucide-react-native';
-import { Colors } from '@/constants/Colors';
-
-const colors = Colors.light;
 
 interface Achievement {
   id: string;
   title: string;
   description: string;
-  icon: React.ReactElement;
+  icon: React.ReactElement<{ color?: string }>;
   unlocked: boolean;
   progress?: number;
   maxProgress?: number;
@@ -43,12 +42,15 @@ interface UserStats {
   successRate: number;
 }
 
-// Fresh start - reset all data
+// Get current week data with proper date calculations
 const getCurrentWeekData = (): WeekDay[] => {
   const today = new Date();
   const currentDay = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
   const startOfWeek = new Date(today);
-  startOfWeek.setDate(today.getDate() - currentDay + 1); // Start from Monday
+  
+  // Adjust to start from Monday (1) instead of Sunday (0)
+  const mondayOffset = currentDay === 0 ? -6 : 1 - currentDay;
+  startOfWeek.setDate(today.getDate() + mondayOffset);
 
   const weekData: WeekDay[] = [];
   const dayNames = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
@@ -132,19 +134,29 @@ const createAchievements = (stats: UserStats): Achievement[] => [
 ];
 
 export default function StreakScreen() {
+  const colorScheme = useColorScheme();
+  const colors = getColors(colorScheme === 'dark');
   const [selectedTab, setSelectedTab] = useState<'overview' | 'achievements'>('overview');
   const [weekData, setWeekData] = useState<WeekDay[]>([]);
-  const [userStats, setUserStats] = useState(getInitialUserStats());
-  const [achievements, setAchievements] = useState(createAchievements(userStats));
+  const [userStats, setUserStats] = useState<UserStats>(getInitialUserStats());
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
 
   useEffect(() => {
-    const week = getCurrentWeekData();
-    const stats = getInitialUserStats();
-    const achievementsList = createAchievements(stats);
-    
-    setWeekData(week);
-    setUserStats(stats);
-    setAchievements(achievementsList);
+    try {
+      const week = getCurrentWeekData();
+      const stats = getInitialUserStats();
+      const achievementsList = createAchievements(stats);
+      
+      setWeekData(week);
+      setUserStats(stats);
+      setAchievements(achievementsList);
+    } catch (error) {
+      console.error('Error initializing streak data:', error);
+      // Fallback to empty state
+      setWeekData([]);
+      setUserStats(getInitialUserStats());
+      setAchievements([]);
+    }
   }, []);
 
   const getTodaysWin = (): string => {
@@ -162,18 +174,8 @@ export default function StreakScreen() {
     }
   };
 
-  if (!userStats) {
-    return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <Text style={{ color: colors.textSecondary }}>Loading your progress...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   const renderWeekDay = (day: WeekDay, index: number) => (
-    <View key={index} style={styles.weekDay}>
+    <View key={`${day.day}-${day.date}-${index}`} style={styles.weekDay}>
       <Text style={[styles.weekDayLabel, { color: colors.textSecondary }]}>{day.day}</Text>
       <View style={[
         styles.weekDayCircle,
@@ -182,14 +184,15 @@ export default function StreakScreen() {
         day.today && { borderColor: colors.primary, borderWidth: 3 },
       ]}>
         {day.completed && <CheckCircle2 size={16} color={colors.white} />}
-        <Text style={[
-          styles.weekDayDate,
-          { color: colors.text },
-          day.completed && { color: colors.white },
-          day.today && { color: colors.primary },
-        ]}>
-          {day.date}
-        </Text>
+        {!day.completed && (
+          <Text style={[
+            styles.weekDayDate,
+            { color: colors.text },
+            day.today && { color: colors.primary },
+          ]}>
+            {day.date}
+          </Text>
+        )}
       </View>
     </View>
   );
@@ -214,11 +217,13 @@ export default function StreakScreen() {
               colors={[colors.primary, colors.accent]}
               style={styles.iconGradient}
             >
-              {achievement.icon}
+              {React.cloneElement(achievement.icon, {
+                color: colors.white,
+              })}
             </LinearGradient>
           ) : (
-            React.cloneElement(achievement.icon as React.ReactElement<any>, {
-              props: { color: colors.textLight },
+            React.cloneElement(achievement.icon, {
+              color: colors.textLight,
             })
           )}
         </View>
@@ -268,15 +273,6 @@ export default function StreakScreen() {
     container: {
       flex: 1,
       backgroundColor: colors.background,
-    },
-    loadingContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    loadingText: {
-      fontFamily: 'Inter-Medium',
-      fontSize: 16,
     },
     header: {
       paddingHorizontal: 20,

@@ -10,10 +10,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { getColors } from '../../constants/Colors';
+import { useColorScheme } from '@/hooks/useColorScheme';
+import CreateCollectionModal from '../../components/CreateCollectionModal';
 import { BookOpen, Heart, Folder, Plus, Search, Grid3x3 as Grid3X3, List, Star, Clock, Quote, ArrowRight, MoveHorizontal as MoreHorizontal, X } from 'lucide-react-native';
-import { Colors } from '@/constants/Colors';
-
-const colors = Colors.light;
 
 interface Collection {
   id: string;
@@ -21,7 +21,7 @@ interface Collection {
   description: string;
   itemCount: number;
   color: readonly [string, string];
-  icon: React.ReactElement;
+  icon: React.ReactNode;
   items: SavedItem[];
   createdAt: string;
 }
@@ -33,6 +33,7 @@ interface SavedItem {
   author?: string;
   type: 'quote' | 'book' | 'tip';
   savedAt: string;
+  collectionId?: string;
 }
 
 // Fresh start - empty collections and items
@@ -42,7 +43,7 @@ const getInitialCollections = (colors: any): Collection[] => [
     name: 'My Inspiration',
     description: 'Quotes and ideas that motivate me',
     itemCount: 0,
-    color: [colors.primary, colors.accent],
+    color: [colors.primary, colors.accent] as const,
     icon: <Star size={20} color="#FFFFFF" />,
     createdAt: 'Just created',
     items: [],
@@ -52,7 +53,7 @@ const getInitialCollections = (colors: any): Collection[] => [
     name: 'Learning Journey',
     description: 'Books and insights for growth',
     itemCount: 0,
-    color: [colors.coral, '#FF6B35'],
+    color: [colors.coral, '#FF6B35'] as const,
     icon: <BookOpen size={20} color="#FFFFFF" />,
     createdAt: 'Just created',
     items: [],
@@ -62,7 +63,7 @@ const getInitialCollections = (colors: any): Collection[] => [
     name: 'Mindfulness',
     description: 'Peaceful moments and reflections',
     itemCount: 0,
-    color: [colors.accent, '#9B7EBD'],
+    color: [colors.accent, '#9B7EBD'] as const,
     icon: <Heart size={20} color="#FFFFFF" />,
     createdAt: 'Just created',
     items: [],
@@ -72,6 +73,8 @@ const getInitialCollections = (colors: any): Collection[] => [
 const getInitialRecentItems = (): SavedItem[] => [];
 
 export default function LibraryScreen() {
+  const colorScheme = useColorScheme();
+  const colors = getColors(colorScheme === 'dark');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -79,6 +82,7 @@ export default function LibraryScreen() {
   const [searchResults, setSearchResults] = useState<SavedItem[]>([]);
   const [collections, setCollections] = useState(getInitialCollections(colors));
   const [recentItems, setRecentItems] = useState(getInitialRecentItems());
+  const [showCreateCollection, setShowCreateCollection] = useState(false);
 
   // All searchable content
   const allContent = [
@@ -111,6 +115,36 @@ export default function LibraryScreen() {
     setSearchQuery('');
     setSearchResults([]);
     setIsSearching(false);
+  };
+
+  const handleCreateCollection = (collection: Omit<Collection, 'id' | 'itemCount' | 'items' | 'createdAt'>) => {
+    const newCollection: Collection = {
+      ...collection,
+      id: Date.now().toString(),
+      itemCount: 0,
+      items: [],
+      createdAt: 'Just created',
+      color: collection.color as readonly [string, string],
+    };
+    
+    setCollections(prev => [...prev, newCollection]);
+  };
+
+  const handleSaveToCollection = (item: SavedItem, collectionId: string) => {
+    // Add item to collection
+    setCollections(prev => prev.map(collection => {
+      if (collection.id === collectionId) {
+        return {
+          ...collection,
+          items: [...collection.items, { ...item, collectionId }],
+          itemCount: collection.itemCount + 1,
+        };
+      }
+      return collection;
+    }));
+
+    // Remove from recent items if it was there
+    setRecentItems(prev => prev.filter(recentItem => recentItem.id !== item.id));
   };
 
   const renderCollectionCard = (collection: Collection) => (
@@ -243,18 +277,31 @@ export default function LibraryScreen() {
               </Text>
             </View>
           )}
+          
+          {selectedCollection.items.map((item) => (
+            <View key={item.id} style={[styles.collectionItem, { backgroundColor: colors.card }]}>
+              <View style={[styles.collectionItemIcon, { backgroundColor: colors.surface }]}>
+                {item.type === 'quote' && <Quote size={16} color={colors.primary} />}
+                {item.type === 'book' && <BookOpen size={16} color={colors.coral} />}
+                {item.type === 'tip' && <Star size={16} color={colors.accent} />}
+              </View>
+              
+              <View style={styles.collectionItemContent}>
+                <Text style={[styles.collectionItemTitle, { color: colors.text }]}>{item.title}</Text>
+                <Text style={[styles.collectionItemText, { color: colors.textSecondary }]} numberOfLines={3}>
+                  {item.content}
+                </Text>
+                {item.author && (
+                  <Text style={[styles.collectionItemAuthor, { color: colors.primary }]}>— {item.author}</Text>
+                )}
+                <Text style={[styles.collectionItemMeta, { color: colors.textLight }]}>Saved {item.savedAt}</Text>
+              </View>
+            </View>
+          ))}
         </ScrollView>
       </View>
     );
   };
-
-  if (selectedCollection) {
-    return (
-      <SafeAreaView style={[{ flex: 1, backgroundColor: colors.background }]}>
-        {renderCollectionDetail()}
-      </SafeAreaView>
-    );
-  }
 
   const styles = StyleSheet.create({
     container: {
@@ -708,7 +755,58 @@ export default function LibraryScreen() {
       textAlign: 'center',
       lineHeight: 20,
     },
+    collectionItem: {
+      flexDirection: 'row',
+      padding: 16,
+      borderRadius: 12,
+      marginBottom: 12,
+      shadowColor: colors.text,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+      elevation: 1,
+    },
+    collectionItemIcon: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 12,
+    },
+    collectionItemContent: {
+      flex: 1,
+    },
+    collectionItemTitle: {
+      fontFamily: 'Inter-SemiBold',
+      fontSize: 16,
+      marginBottom: 4,
+    },
+    collectionItemText: {
+      fontFamily: 'Inter-Regular',
+      fontSize: 14,
+      lineHeight: 20,
+      marginBottom: 4,
+    },
+    collectionItemAuthor: {
+      fontFamily: 'Inter-Medium',
+      fontSize: 13,
+      fontStyle: 'italic',
+      marginBottom: 4,
+    },
+    collectionItemMeta: {
+      fontFamily: 'Inter-Regular',
+      fontSize: 11,
+    },
   });
+
+  if (selectedCollection) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        {renderCollectionDetail()}
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -786,7 +884,10 @@ export default function LibraryScreen() {
           <>
             {/* Quick Actions */}
             <View style={styles.quickActions}>
-              <TouchableOpacity style={styles.createButton}>
+              <TouchableOpacity 
+                style={styles.createButton}
+                onPress={() => setShowCreateCollection(true)}
+              >
                 <LinearGradient
                   colors={[colors.primary, colors.accent]}
                   style={styles.createGradient}
@@ -867,6 +968,13 @@ export default function LibraryScreen() {
           </>
         )}
       </ScrollView>
+
+      {/* Create Collection Modal */}
+      <CreateCollectionModal
+        visible={showCreateCollection}
+        onClose={() => setShowCreateCollection(false)}
+        onCreateCollection={handleCreateCollection}
+      />
     </SafeAreaView>
   );
 }
